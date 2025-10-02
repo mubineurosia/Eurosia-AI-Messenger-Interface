@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eurosia AI Messenger</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: #f8f8f8; }
+
+        /* Custom font */
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'eurosia-blue': '#2E4057', /* Deep slate blue */
+                        'eurosia-gold': '#FFD700', /* Gold for accents */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 flex items-center justify-center min-h-screen p-4">
+
+    <!-- Main Messenger Card -->
+    <div class="w-full max-w-3xl bg-white shadow-2xl rounded-xl overflow-hidden flex flex-col h-[90vh] md:h-[80vh]">
+
+        <!-- Header -->
+        <header class="bg-eurosia-blue text-white p-4 flex items-center justify-between rounded-t-xl shadow-lg">
+            <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-eurosia-gold mr-3" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm1 14h-2v-4H8v-2h3V7h2v3h3v2h-3v4z"/>
+                </svg>
+                <h1 class="text-2xl font-bold">Eurosia AI Messenger</h1>
+            </div>
+            <span class="text-sm font-light italic text-eurosia-gold">Gemini Canvas</span>
+        </header>
+
+        <!-- Chat Output Area -->
+        <div id="chatOutput" class="flex-grow p-5 space-y-4 overflow-y-auto bg-gray-100">
+            <!-- Initial Greeting -->
+            <div class="flex justify-start">
+                <div class="bg-eurosia-gold/20 p-4 rounded-xl max-w-[85%] shadow-md border-l-4 border-eurosia-gold">
+                    <p class="font-semibold text-eurosia-blue">Eurosia AI Messenger:</p>
+                    <p class="text-gray-800 mt-1">
+                        Welcome. I am ready to provide concise, insightful analysis across the European and Asian continents. How may I assist your exploration of Eurosian dynamics today?
+                    </p>
+                </div>
+            </div>
+            <!-- Messages will be appended here -->
+            <div id="messagesContainer"></div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden flex justify-center py-4">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-eurosia-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="text-sm text-eurosia-blue">Analyzing global data...</span>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 bg-white border-t border-gray-200">
+            <div class="flex space-x-3">
+                <input
+                    type="text"
+                    id="userInput"
+                    placeholder='E.g., "What is the most significant recent economic development connecting Central Europe with Southeast Asia?"'
+                    class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-eurosia-blue focus:border-eurosia-blue text-sm"
+                    onkeydown="if(event.key === 'Enter') sendMessage()"
+                    value="Greetings, Eurosia AI Messenger. What is the most significant recent economic development connecting Central Europe with Southeast Asia?"
+                >
+                <button
+                    id="sendButton"
+                    onclick="sendMessage()"
+                    class="bg-eurosia-blue text-white px-6 py-3 rounded-lg shadow-lg hover:bg-eurosia-blue/90 transition duration-150 active:scale-[0.98] disabled:opacity-50"
+                >
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const API_KEY = ""; // Canvas will provide this in runtime
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=" + API_KEY;
+
+        const messagesContainer = document.getElementById('messagesContainer');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        // --- System Instruction from eurosia_ai_messenger_prompt.txt ---
+        const systemPrompt = `
+            Act as the **Eurosia AI Messenger**, an exceptionally intelligent, insightful, and user-friendly assistant specializing in the rich tapestry of the European and Asian continents. Your expertise encompasses:
+
+            1. **Geopolitical and Economic Dynamics:** Analyzing trade routes, investment patterns, and political relationships between and within Eurosia.
+            2. **Cultural and Historical Synthesis:** Providing comparative analysis of history, traditions, languages, and philosophies from both regions.
+            3. **Current Events and Business:** Delivering up-to-the-minute information on news, market trends, and business opportunities in key Eurosia hubs.
+
+            **Persona Rules:**
+            * **Tone:** Adopt a knowledgeable, warm, and highly professional tone. Be concise, witty, and always easy to understand.
+            * **Response Length:** Target responses to be **brief and highly informative, generally under 90 words**, unless the user explicitly requests a "detailed" or "in-depth" analysis.
+            * **Interaction Flow:** Always end your response by offering a specific, related follow-up question or area of exploration to keep the conversation flowing interactively. (e.g., "Would you like to explore the cultural differences between Kyoto and Vienna, or focus on current tech investments in Singapore?")
+            * **Grounding:** You **must** utilize the Google Search grounding tool for any query involving current events, stock markets, political updates, or modern business statistics.
+        `;
+        // -----------------------------------------------------------------
+
+        /**
+         * Adds a message to the chat interface.
+         * @param {string} content The message content.
+         * @param {string} sender 'user' or 'ai'.
+         * @param {Array<Object>} [sources=[]] Optional array of grounding sources.
+         */
+        function addMessage(content, sender, sources = []) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
+
+            const contentDiv = document.createElement('div');
+            let bgColor = sender === 'user' ? 'bg-eurosia-blue/10' : 'bg-eurosia-gold/20 border-l-4 border-eurosia-gold';
+            let textColor = sender === 'user' ? 'text-gray-800' : 'text-gray-800';
+
+            contentDiv.className = `${bgColor} p-4 rounded-xl max-w-[85%] shadow-md`;
+
+            if (sender === 'ai') {
+                contentDiv.innerHTML = `<p class="font-semibold text-eurosia-blue">Eurosia AI Messenger:</p><p class="${textColor} mt-1">${content.replace(/\n/g, '<br>')}</p>`;
+            } else {
+                contentDiv.innerHTML = `<p class="${textColor}">${content.replace(/\n/g, '<br>')}</p>`;
+            }
+
+            // Add grounding sources if available
+            if (sources.length > 0) {
+                const sourceList = sources.map((s, index) =>
+                    `<a href="${s.uri}" target="_blank" class="text-xs text-blue-600 hover:text-blue-800 transition duration-100 block truncate" title="${s.title}">${index + 1}. ${s.title}</a>`
+                ).join('');
+
+                const sourceDiv = document.createElement('div');
+                sourceDiv.className = 'mt-2 pt-2 border-t border-gray-300 text-xs text-gray-600';
+                sourceDiv.innerHTML = `<p class="font-medium mb-1">Sources (Search Grounding):</p>${sourceList}`;
+                contentDiv.appendChild(sourceDiv);
+            }
+
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            
+            // Scroll to the bottom of the chat
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        /**
+         * Core function to call the Gemini API with exponential backoff.
+         */
+        async function callGeminiApi(query, maxRetries = 5) {
+            const payload = {
+                contents: [{ parts: [{ text: query }] }],
+                tools: [{ "google_search": {} }], // MANDATORY for current data
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+            };
+
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 429 && i < maxRetries - 1) {
+                            const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            continue;
+                        }
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        const text = candidate.content.parts[0].text;
+                        let sources = [];
+                        const groundingMetadata = candidate.groundingMetadata;
+                        
+                        if (groundingMetadata && groundingMetadata.groundingAttributions) {
+                            sources = groundingMetadata.groundingAttributions
+                                .map(attribution => ({
+                                    uri: attribution.web?.uri,
+                                    title: attribution.web?.title,
+                                }))
+                                .filter(source => source.uri && source.title);
+                        }
+
+                        return { text, sources };
+                    } else {
+                        throw new Error("Received an invalid response format from the API.");
+                    }
+                } catch (error) {
+                    if (i === maxRetries - 1) {
+                        console.error("Final API call attempt failed:", error);
+                        return { text: `Error: I was unable to connect to the analysis engine. Please try again later.`, sources: [] };
+                    }
+                }
+            }
+        }
+
+        /**
+         * Handles the user's input and initiates the API call.
+         */
+        async function sendMessage() {
+            const query = userInput.value.trim();
+            if (!query) return;
+
+            // 1. Show user message
+            addMessage(query, 'user');
+            userInput.value = '';
+
+            // 2. Set UI state to loading
+            sendButton.disabled = true;
+            loadingIndicator.classList.remove('hidden');
+
+            // 3. Call the API
+            const { text, sources } = await callGeminiApi(query);
+
+            // 4. Show AI response
+            addMessage(text, 'ai', sources);
+
+            // 5. Reset UI state
+            loadingIndicator.classList.add('hidden');
+            sendButton.disabled = false;
+            userInput.focus();
+        }
+    </script>
+</body>
+</html>
